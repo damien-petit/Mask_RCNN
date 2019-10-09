@@ -30,6 +30,10 @@ from distutils.version import LooseVersion
 assert LooseVersion(tf.__version__) >= LooseVersion("1.3")
 assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
 
+# For Error "CUDNN_STATUS_INTERNAL_ERROR"
+config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+session = tf.Session(config=config)
+K.tensorflow_backend.set_session(session)
 
 ############################################################
 #  Utility Functions
