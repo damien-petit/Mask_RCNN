@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pip3 install --upgrade pip setuptools
 
 RUN mkdir /root/src && cd /root/src && \
-    git clone -b docker_cpu https://github.com/damien-petit/Mask_RCNN &&\
+    git clone -b lab_config https://github.com/damien-petit/Mask_RCNN &&\
     cd Mask_RCNN && \
     python3 -m pip install -r requirements_cpu.txt && \
     python3 -m pip install pycocotools && \
