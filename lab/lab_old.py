@@ -5,6 +5,26 @@ Train on the toy lab dataset and implement color splash effect.
 Copyright (c) 2018 Matterport, Inc.
 Licensed under the MIT License (see LICENSE for details)
 Written by Waleed Abdulla
+
+------------------------------------------------------------
+
+Usage: import the module (see Jupyter notebooks for examples), or run from
+       the command line as such:
+
+    # Train a new model starting from pre-trained COCO weights
+    python3 lab.py train --dataset=/path/to/lab/dataset --weights=coco
+
+    # Resume training a model that you had trained earlier
+    python3 lab.py train --dataset=/path/to/lab/dataset --weights=last
+
+    # Train a new model starting from ImageNet weights
+    python3 lab.py train --dataset=/path/to/lab/dataset --weights=imagenet
+
+    # Apply color splash to an image
+    python3 lab.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
+
+    # Apply color splash to video using the last weights you trained
+    python3 lab.py splash --weights=last --video=<URL or path to file>
 """
 
 import os
@@ -33,10 +53,7 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
 EPOCH = 50
 
-class_names = [
-    'BG', 'caloriemate', 'koiwashi', 'fabrise', 'saratekt',
-    'cleanser', 'jerry', 'dishcup', 'bottle'
-]
+class_names = {}
 
 ############################################################
 #  Configurations
@@ -50,30 +67,19 @@ class LabConfig(Config):
     # Give the configuration a recognizable name
     NAME = "lab"
 
-    # Number of images to train with on each GPU. 
-    # A 12GB GPU can typically handle 2 images of 1024x1024px.
-    # Adjust based on your GPU memory and image sizes. 
-    # Use the highest number that your GPU can handle for best performance.
+    # We use a GPU with 12GB memory, which can fit two images.
+    # Adjust down if you use a smaller GPU.
     IMAGES_PER_GPU = 2
 
-    # NUMBER OF GPUs to use. When using only a CPU, this needs to be set to 1.
-    # Batch size = IMAGES_PER_GPU * GPU_COUNT
     GPU_COUNT = 4
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 8
+    NUM_CLASSES = 1 + 8  # Background + caloriemate, koiwashi, fabrise, peyang, shirt
 
     # Number of training steps per epoch
-    # This doesn't need to match the size of the training set. Tensorboard
-    # updates are saved at the end of each epoch, so setting this to a
-    # smaller number means getting more frequent TensorBoard updates.
-    # Validation stats are also calculated at each epoch end and they
-    # might take a while, so don't set this too small to avoid spending
-    # a lot of time on validation stats.
-    # ??? Why this doesn't need to match the size of the training set ???
     STEPS_PER_EPOCH = 100
 
-    # Skip detections with < 80% confidence
+    # Skip detections with < 90% confidence
     DETECTION_MIN_CONFIDENCE = 0.8
 
 
@@ -89,19 +95,41 @@ class LabDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes. We have only one class to add.
-        for i, name in enumerate(class_names):
-            if name == "BG": continue
-            self.add_class("lab", i, name)
+        self.add_class("lab", 1, "caloriemate")
+        self.add_class("lab", 2, "koiwashi")
+        self.add_class("lab", 3, "fabrise")
+        self.add_class("lab", 4, "saratekt")
+        self.add_class("lab", 5, "cleanser")
+        self.add_class("lab", 6, "jerry")
+        self.add_class("lab", 7, "dishcup")
+        self.add_class("lab", 8, "bottle")
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
+        # assert subset in ["train_gray", "val_gray"]
         dataset_dir = os.path.join(dataset_dir, subset)
 
+        # Load annotations
+        # VGG Image Annotator (up to version 1.6) saves each image in the form:
+        # { 'filename': '28503151_5b5b7ec140_b.jpg',
+        #   'regions': {
+        #       '0': {
+        #           'region_attributes': {},
+        #           'shape_attributes': {
+        #               'all_points_x': [...],
+        #               'all_points_y': [...],
+        #               'name': 'polygon'}},
+        #       ... more regions ...
+        #   },
+        #   'size': 100202
+        # }
+        # We mostly care about the x and y coordinates of each region
+        # Note: In VIA 2.0, regions was changed from a dict to a list.
         annotations = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
-        annotations = list(annotations.values())
+        annotations = list(annotations.values())  # don't need the dict keys
 
-        # The VIA tool saves images in the JSON even if they don't have any annotations.
-        # Skip unannotated images.
+        # The VIA tool saves images in the JSON even if they don't have any
+        # annotations. Skip unannotated images.
         annotations = [a for a in annotations if a['regions']]
 
         # Add images
@@ -118,11 +146,13 @@ class LabDataset(utils.Dataset):
                 names = [r['region_attributes'] for r in a['regions']]
 
             # load_mask() needs the image size to convert polygons to masks.
-            # Unfortunately, VIA doesn't include it in JSON, so we must read the image.
-            # This is only managable since the dataset is tiny.
+            # Unfortunately, VIA doesn't include it in JSON, so we must read
+            # the image. This is only managable since the dataset is tiny.
             image_path = os.path.join(dataset_dir, a['filename'])
             image = skimage.io.imread(image_path)
             height, width = image.shape[:2]
+
+            class_names[a['filename']] = names
 
             self.add_image(
                 "lab",
@@ -149,10 +179,20 @@ class LabDataset(utils.Dataset):
         mask = np.zeros([info["height"], info["width"], len(info["polygons"])],
                         dtype=np.uint8)
         class_ids = []
-        for i, (p, n) in enumerate(zip(info["polygons"], info["names"])):
+        for i, p in enumerate(info["polygons"]):
+            # Get indexes of pixels inside the polygon and set them to 1
             rr, cc = skimage.draw.polygon(p['all_points_y'], p['all_points_x'])
             mask[rr, cc, i] = 1
-            class_id = class_names.index(n["name"])
+            class_id = 0
+            # if (i <= len(class_names[info["id"]]) - 1):
+            if info["names"][i]["name"] == "caloriemate": class_id = 1
+            elif info["names"][i]["name"] == "koiwashi": class_id = 2
+            elif info["names"][i]["name"] == "fabrise": class_id = 3
+            elif info["names"][i]["name"] == "saratekt": class_id = 4
+            elif info["names"][i]["name"] == "cleanser": class_id = 5
+            elif info["names"][i]["name"] == "jerry": class_id = 6
+            elif info["names"][i]["name"] == "dishcup": class_id = 7
+            elif info["names"][i]["name"] == "bottle": class_id = 8
             class_ids.append(class_id)
 
         # Return mask, and array of class IDs of each instance. Since we have
@@ -181,7 +221,10 @@ def train(model):
     dataset_val.load_lab(args.dataset, "val")
     dataset_val.prepare()
 
-    # Start training
+    # *** This training schedule is an example. Update to your needs ***
+    # Since we're using a very small dataset, and starting from
+    # COCO trained weights, we don't need to train too long. Also,
+    # no need to train all layers, just the heads should do it.
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
@@ -191,8 +234,77 @@ def train(model):
     model_path = os.path.join(LAB_DIR, "mask_rcnn_lab.h5")
     model.keras_model.save_weights(model_path)
 
-def detect(model, image_path):
-    # Detect code
+
+def color_splash(image, mask):
+    """Apply color splash effect.
+    image: RGB image [height, width, 3]
+    mask: instance segmentation mask [height, width, instance count]
+
+    Returns result image.
+    """
+    # Make a grayscale copy of the image. The grayscale copy still
+    # has 3 RGB channels, though.
+    gray = skimage.color.gray2rgb(skimage.color.rgb2gray(image)) * 255
+    # Copy color pixels from the original color image where mask is set
+    if mask.shape[-1] > 0:
+        # We're treating all instances as one, so collapse the mask into one layer
+        mask = (np.sum(mask, -1, keepdims=True) >= 1)
+        splash = np.where(mask, image, gray).astype(np.uint8)
+    else:
+        splash = gray.astype(np.uint8)
+    return splash
+
+
+def detect_and_color_splash(model, image_path=None, video_path=None):
+    assert image_path or video_path
+
+    # Image or video?
+    if image_path:
+        # Run model detection and generate the color splash effect
+        print("Running on {}".format(args.image))
+        # Read image
+        image = skimage.io.imread(args.image)
+        # Detect objects
+        r = model.detect([image], verbose=1)[0]
+        # Color splash
+        splash = color_splash(image, r['masks'])
+        # Save output
+        file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
+        skimage.io.imsave(file_name, splash)
+    elif video_path:
+        import cv2
+        # Video capture
+        vcapture = cv2.VideoCapture(video_path)
+        width = int(vcapture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(vcapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = vcapture.get(cv2.CAP_PROP_FPS)
+
+        # Define codec and create video writer
+        file_name = "splash_{:%Y%m%dT%H%M%S}.avi".format(datetime.datetime.now())
+        vwriter = cv2.VideoWriter(file_name,
+                                  cv2.VideoWriter_fourcc(*'MJPG'),
+                                  fps, (width, height))
+
+        count = 0
+        success = True
+        while success:
+            print("frame: ", count)
+            # Read next image
+            success, image = vcapture.read()
+            if success:
+                # OpenCV returns images as BGR, convert to RGB
+                image = image[..., ::-1]
+                # Detect objects
+                r = model.detect([image], verbose=0)[0]
+                # Color splash
+                splash = color_splash(image, r['masks'])
+                # RGB -> BGR to save image to video
+                splash = splash[..., ::-1]
+                # Add image to video writer
+                vwriter.write(splash)
+                count += 1
+        vwriter.release()
+    print("Saved to ", file_name)
 
 
 ############################################################
@@ -207,7 +319,7 @@ if __name__ == '__main__':
         description='Train Mask R-CNN to detect lab data.')
     parser.add_argument("command",
                         metavar="<command>",
-                        help="'train' or 'detect'")
+                        help="'train' or 'splash'")
     parser.add_argument('--dataset', required=False,
                         metavar="/path/to/lab/dataset/",
                         help='Directory of the lab dataset')
@@ -220,14 +332,18 @@ if __name__ == '__main__':
                         help='Logs and checkpoints directory (default=logs/)')
     parser.add_argument('--image', required=False,
                         metavar="path or URL to image",
-                        help='Image to detect by learned model')
+                        help='Image to apply the color splash effect on')
+    parser.add_argument('--video', required=False,
+                        metavar="path or URL to video",
+                        help='Video to apply the color splash effect on')
     args = parser.parse_args()
 
     # Validate arguments
     if args.command == "train":
         assert args.dataset, "Argument --dataset is required for training"
-    elif args.command == "detect":
-        assert args.image, "Argment --image is required for detection"
+    elif args.command == "splash":
+        assert args.image or args.video,\
+               "Provide --image or --video to apply color splash"
 
     print("Weights: ", args.weights)
     print("Dataset: ", args.dataset)
@@ -282,8 +398,9 @@ if __name__ == '__main__':
     # Train or evaluate
     if args.command == "train":
         train(model)
-    elif args.command == "detect":
-        detect(model, args.image)
+    elif args.command == "splash":
+        detect_and_color_splash(model, image_path=args.image,
+                                video_path=args.video)
     else:
         print("'{}' is not recognized. "
-              "Use 'train' or 'detect'".format(args.command))
+              "Use 'train' or 'splash'".format(args.command))
