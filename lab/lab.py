@@ -105,6 +105,7 @@ class LabDataset(utils.Dataset):
         annotations = [a for a in annotations if a['regions']]
 
         # Add images
+        label = {}
         for a in annotations:
             # Get the x, y coordinaets of points of the polygons that make up
             # the outline of each object instance. These are stores in the
@@ -130,6 +131,17 @@ class LabDataset(utils.Dataset):
                 path=image_path,
                 width=width, height=height,
                 polygons=polygons, names=names)
+
+            for name in names:
+                if labels.get(name["name"]):
+                    label[name["name"]] += 1
+                else:
+                    label[name["name"]] = 1
+
+        print("The number of ", subset, "image: ", len(self.class_info))
+        print("The number of ", subset, "label: ", sum(label.values()))
+        for key in label:
+            print(" The number of ¥'", key, "¥' label: ", label[key])
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
