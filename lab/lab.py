@@ -140,8 +140,8 @@ class LabDataset(utils.Dataset):
 
         print("The number of ", subset, "image: ", len(self.image_info))
         print("The number of ", subset, "label: ", sum(label.values()))
-        for key in label:
-            print(" The number of '", key, "' label: ", label[key])
+        for k, v in sorted(label.items()):
+            print(" The number of '", k, "' label: ", v)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
