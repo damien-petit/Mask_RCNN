@@ -133,15 +133,15 @@ class LabDataset(utils.Dataset):
                 polygons=polygons, names=names)
 
             for name in names:
-                if labels.get(name["name"]):
+                if label.get(name["name"]):
                     label[name["name"]] += 1
                 else:
                     label[name["name"]] = 1
 
-        print("The number of ", subset, "image: ", len(self.class_info))
+        print("The number of ", subset, "image: ", len(self.image_info))
         print("The number of ", subset, "label: ", sum(label.values()))
         for key in label:
-            print(" The number of ¥'", key, "¥' label: ", label[key])
+            print(" The number of '", key, "' label: ", label[key])
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -204,8 +204,8 @@ def train(model):
     model.keras_model.save_weights(model_path)
 
 def detect(model, image_path):
+    print("Write detect code")
     # Detect code
-
 
 ############################################################
 #  Training
