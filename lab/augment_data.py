@@ -24,11 +24,11 @@ print("Augment target Directory :", target)
 
 # Augmentation definition
 seq1 = iaa.Sequential([
-    iaa.Affine(rotate(-180, 180)),
+    iaa.Affine(rotate=(-180, 180)),
     iaa.GaussianBlur(sigma=(0, 2.0))
 ])
 seq2 = iaa.Sequential([
-    iaa.LogContrast(gain=(0.7, 1.1)),
+    iaa.LogContrast(gain=(0.6, 1.1)),
 ])
 
 DATA_DIR = os.path.join(ROOT_DIR, target)
@@ -76,12 +76,19 @@ for curDir, dirs, files in os.walk(DATA_DIR):
                     attr = {}
                     attr["region_attributes"] = {"name": mask_attr[j]}
 
-                    tmp = aug_mask[:,:,i]
+                    tmp = aug_mask[:,:,j]
                     ret, thresh = cv2.threshold(tmp, 0.5, 1.0, cv2.THRESH_BINARY)
-                    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                    all_points_x = [int(contours[0][k][0][0] for k in range(len(contours[0]))]
-                    all_points_y = [int(contours[0][k][0][1] for k in range(len(contours[0]))]
+                    contours_index = 0
+                    for k in range(len(contours)):
+                        if k != len(contours) - 1:
+                            if len(contours[k]) < len(contours[k + 1]):
+                                contours_index = k + 1
+
+                    contours = contours[contours_index]
+                    all_points_x = [int(contours[k][0][0]) for k in range(len(contours))]
+                    all_points_y = [int(contours[k][0][1]) for k in range(len(contours))]
                     attr["shape_attributes"] = {"name": "polyline", "all_points_x": all_points_x, "all_points_y": all_points_y}
                     regions.append(attr)
 
@@ -90,3 +97,5 @@ for curDir, dirs, files in os.walk(DATA_DIR):
 
         with open(curDir + "/augmented/label_augment.json", "w") as f:
             json.dump(result, f)
+
+print("Finished")
