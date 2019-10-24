@@ -58,16 +58,16 @@ for curDir, dirs, files in os.walk(DATA_DIR):
 
             img_and_mask = np.append(img, mask, axis=2)
             for i in range(AUGMENT_SIZE_PER_IMAGE):
+                filename = a['filename'].split(".")[0] + "_" + str(i) + ".png"
+                if os.path.isfile(curDir + "/augmented/" + filename):
+                    continue
+
                 aug = seq1.augment_image(img_and_mask)
                 aug_img = aug[:, :, :3]
                 aug_mask = aug[:, :, 3:]
 
                 aug_img = seq2.augment_image(aug_img)
-                filename = a['filename'].split(".")[0] + "_" + str(i) + ".png"
-                if not os.path.isfile(curDir + "/augmented/" + filename):
-                    cv2.imwrite(curDir + "/augmented/" + filename, cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR))
-                else:
-                    continue
+                cv2.imwrite(curDir + "/augmented/" + filename, cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR))
 
                 # Make augmented masked label data
                 result[str(count)] = {"filename": filename, "file_attributes":{}, "size":0}
