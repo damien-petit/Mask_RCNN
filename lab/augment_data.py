@@ -24,11 +24,12 @@ print("Augment target Directory :", target)
 
 # Augmentation definition
 seq1 = iaa.Sequential([
-    iaa.Affine(rotate=(-180, 180)),
-    iaa.GaussianBlur(sigma=(0, 2.0))
+    iaa.Sometimes(0.8, iaa.Affine(rotate=(-180, 180))),
+    iaa.Sometimes(0.8, iaa.Resize((0.5, 1.1))),
+    iaa.Sometimes(0.8, iaa.GaussianBlur(sigma=(0.0, 3.0)))
 ])
 seq2 = iaa.Sequential([
-    iaa.LogContrast(gain=(0.6, 1.1)),
+    iaa.Sometimes(0.8, iaa.LogContrast(gain=(0.6, 1.1)))
 ])
 
 DATA_DIR = os.path.join(ROOT_DIR, target)
