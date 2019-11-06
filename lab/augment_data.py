@@ -26,13 +26,14 @@ print("Augment target Directory :", target)
 seq1 = iaa.Sequential([
     iaa.Sometimes(0.8, iaa.Affine(rotate=(-180, 180))),
     iaa.Sometimes(0.8, iaa.Resize((0.5, 1.1))),
-    iaa.Sometimes(0.8, iaa.GaussianBlur(sigma=(0.0, 3.0)))
+    iaa.Sometimes(0.8, iaa.GaussianBlur(sigma=(0.0, 2.0)))
 ])
 seq2 = iaa.Sequential([
     iaa.Sometimes(0.8, iaa.LogContrast(gain=(0.6, 1.1)))
 ])
 
 DATA_DIR = os.path.join(ROOT_DIR, target)
+ids = 0
 for curDir, dirs, files in os.walk(DATA_DIR):
     if not curDir.endswith("augmented") and os.path.isfile(curDir+ "/label.json"):
         annotations = json.load(open(curDir + "/label.json"))
@@ -41,7 +42,6 @@ for curDir, dirs, files in os.walk(DATA_DIR):
 
         print("Current Directory for Augmentation:", curDir)
         result = {}
-        count = 0
         for a in annotations:
             polygons = [r['shape_attributes'] for r in a['regions']]
             names = [r['region_attributes'] for r in a['regions']]
@@ -60,8 +60,8 @@ for curDir, dirs, files in os.walk(DATA_DIR):
             img_and_mask = np.append(img, mask, axis=2)
             for i in range(AUGMENT_SIZE_PER_IMAGE):
                 filename = a['filename'].split(".")[0] + "_" + str(i) + ".png"
-                if os.path.isfile(curDir + "/augmented/" + filename):
-                    continue
+                # if os.path.isfile(curDir + "/augmented/" + filename):
+                #     continue
 
                 aug = seq1.augment_image(img_and_mask)
                 aug_img = aug[:, :, :3]
@@ -71,7 +71,7 @@ for curDir, dirs, files in os.walk(DATA_DIR):
                 cv2.imwrite(curDir + "/augmented/" + filename, cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR))
 
                 # Make augmented masked label data
-                result[str(count)] = {"filename": filename, "file_attributes":{}, "size":0}
+                result[str(ids) + "_" + filename] = {"filename": filename, "file_attributes":{}, "size":0}
                 regions = []
                 for j in range(mask.shape[-1]):
                     attr = {}
@@ -80,6 +80,8 @@ for curDir, dirs, files in os.walk(DATA_DIR):
                     tmp = aug_mask[:,:,j]
                     ret, thresh = cv2.threshold(tmp, 0.5, 1.0, cv2.THRESH_BINARY)
                     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    if (len(contours) == 0) : continue
 
                     contours_index = 0
                     for k in range(len(contours)):
@@ -93,8 +95,9 @@ for curDir, dirs, files in os.walk(DATA_DIR):
                     attr["shape_attributes"] = {"name": "polyline", "all_points_x": all_points_x, "all_points_y": all_points_y}
                     regions.append(attr)
 
-                result[str(count)]["regions"] = regions
-                count += 1
+                result[str(ids) + "_" + filename]["regions"] = regions
+
+        ids += 1
 
         with open(curDir + "/augmented/label_augment.json", "w") as f:
             json.dump(result, f)

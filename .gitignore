@@ -60,3 +60,6 @@ ENV/
 # mrcnn
 # If you want to change this directory, be careful.
 mrcnn/
+
+train/
+val/

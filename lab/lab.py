@@ -54,7 +54,7 @@ class LabConfig(Config):
     # A 12GB GPU can typically handle 2 images of 1024x1024px.
     # Adjust based on your GPU memory and image sizes. 
     # Use the highest number that your GPU can handle for best performance.
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 4
 
     # NUMBER OF GPUs to use. When using only a CPU, this needs to be set to 1.
     # Batch size = IMAGES_PER_GPU * GPU_COUNT
@@ -71,7 +71,7 @@ class LabConfig(Config):
     # might take a while, so don't set this too small to avoid spending
     # a lot of time on validation stats.
     # ??? Why this doesn't need to match the size of the training set ???
-    STEPS_PER_EPOCH = 100
+    STEPS_PER_EPOCH = 500
 
     # Skip detections with < 80% confidence
     DETECTION_MIN_CONFIDENCE = 0.8
@@ -97,7 +97,7 @@ class LabDataset(utils.Dataset):
         assert subset in ["train", "val"]
         dataset_dir = os.path.join(dataset_dir, subset)
 
-        annotations = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
+        annotations = json.load(open(os.path.join(dataset_dir, subset + "_data.json")))
         annotations = list(annotations.values())
 
         # The VIA tool saves images in the JSON even if they don't have any annotations.
