@@ -10,6 +10,7 @@ Written by Waleed Abdulla
 import os
 import sys
 import json
+import time
 import datetime
 import numpy as np
 import skimage.draw
@@ -63,7 +64,7 @@ class LabConfig(Config):
 
     # Number of classes (including background)
     # NUM_CLASSES = 1 + 8
-    NUM_CLASSES = 1 + 1
+    NUM_CLASSES = len(class_names)
 
     # Number of training steps per epoch
     # This doesn't need to match the size of the training set. Tensorboard
@@ -73,7 +74,7 @@ class LabConfig(Config):
     # might take a while, so don't set this too small to avoid spending
     # a lot of time on validation stats.
     # ??? Why this doesn't need to match the size of the training set ???
-    STEPS_PER_EPOCH = 500
+    STEPS_PER_EPOCH = 250
 
     # Skip detections with < 80% confidence
     DETECTION_MIN_CONFIDENCE = 0.8
@@ -108,6 +109,8 @@ class LabDataset(utils.Dataset):
 
         # Add images
         # label = {}
+        print("Loading", subset, " Image Dataset......")
+        start = time.time() 
         for a in annotations:
             # Get the x, y coordinaets of points of the polygons that make up
             # the outline of each object instance. These are stores in the
@@ -144,7 +147,9 @@ class LabDataset(utils.Dataset):
         # print("The number of ", subset, "label: ", sum(label.values()))
         # for k, v in sorted(label.items()):
         #     print(" The number of '", k, "' label: ", v)
-        print("Finshed Load", subset, " Image dataset")
+        end = time.time()
+        print("Finshed Loading", subset, " Image dataset")
+        print("Loading Time: ", round((end - start), 3) ,  "[s]")
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
