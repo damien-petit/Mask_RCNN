@@ -33,10 +33,11 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
 EPOCH = 50
 
-class_names = [
-    'BG', 'caloriemate', 'koiwashi', 'fabrise', 'saratekt',
-    'cleanser', 'jerry', 'dishcup', 'bottle'
-]
+# class_names = [
+#     'BG', 'caloriemate', 'koiwashi', 'fabrise', 'saratekt',
+#     'cleanser', 'jerry', 'dishcup', 'bottle'
+# ]
+class_names = ['BG', 'box']
 
 ############################################################
 #  Configurations
@@ -61,7 +62,8 @@ class LabConfig(Config):
     GPU_COUNT = 4
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 8
+    # NUM_CLASSES = 1 + 8
+    NUM_CLASSES = 1 + 1
 
     # Number of training steps per epoch
     # This doesn't need to match the size of the training set. Tensorboard
@@ -105,7 +107,7 @@ class LabDataset(utils.Dataset):
         annotations = [a for a in annotations if a['regions']]
 
         # Add images
-        label = {}
+        # label = {}
         for a in annotations:
             # Get the x, y coordinaets of points of the polygons that make up
             # the outline of each object instance. These are stores in the
@@ -132,16 +134,17 @@ class LabDataset(utils.Dataset):
                 width=width, height=height,
                 polygons=polygons, names=names)
 
-            for name in names:
-                if label.get(name["name"]):
-                    label[name["name"]] += 1
-                else:
-                    label[name["name"]] = 1
+            # for name in names:
+            #     if label.get(name["name"]):
+            #         label[name["name"]] += 1
+            #     else:
+            #         label[name["name"]] = 1
 
-        print("The number of ", subset, "image: ", len(self.image_info))
-        print("The number of ", subset, "label: ", sum(label.values()))
-        for k, v in sorted(label.items()):
-            print(" The number of '", k, "' label: ", v)
+        # print("The number of ", subset, "image: ", len(self.image_info))
+        # print("The number of ", subset, "label: ", sum(label.values()))
+        # for k, v in sorted(label.items()):
+        #     print(" The number of '", k, "' label: ", v)
+        print("Finshed Load", subset, " Image dataset")
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.

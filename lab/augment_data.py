@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+# sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 import cv2
 import json
@@ -9,6 +9,7 @@ import skimage.draw
 from imgaug import augmenters as iaa
 
 ROOT_DIR = os.path.abspath("./")
+print("ROOT_DIR", ROOT_DIR)
 AUGMENT_SIZE_PER_IMAGE = 20
 
 args = sys.argv
