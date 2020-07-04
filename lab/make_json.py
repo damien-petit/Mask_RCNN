@@ -16,25 +16,32 @@ CURRENT_DIR += args[1] + "/"
 
 
 result = {}
+count = 0
 
 for curDir, dirs, files in os.walk(CURRENT_DIR):
     if os.path.isfile(curDir + "/" + "label.json"):
         f = open(curDir + "/" + "label.json")
         data = json.load(f)
+        tmp = {}
         for x in data:
             filename = curDir + "/" + data[x]["filename"]
             data[x]["filename"] = filename[len(args[1]) + 1 + 2:]
+            tmp[str(count) + "_"+ x] = data[x]
+            count += 1
             #print(filename)
-        result.update(data)
+        result.update(tmp)
     
     if os.path.isfile(curDir + "/" + "label_augment.json"):
         f = open(curDir + "/" + "label_augment.json")
         data = json.load(f)
+        tmp = {}
         for x in data:
             filename = curDir + "/" + data[x]["filename"]
             data[x]["filename"] = filename[len(args[1]) + 1 + 2:]
+            tmp[str(count) + "_"+ x] = data[x]
+            count += 1
             #print(filename)
-        result.update(data)
+        result.update(tmp)
         
 with open(CURRENT_DIR + args[1] + "_data.json", 'w') as f:
     json.dump(result, f)
