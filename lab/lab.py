@@ -74,7 +74,8 @@ class LabConfig(Config):
     # might take a while, so don't set this too small to avoid spending
     # a lot of time on validation stats.
     # ??? Why this doesn't need to match the size of the training set ???
-    STEPS_PER_EPOCH = 250
+    # This parameter is computed after dataset load
+    # STEPS_PER_EPOCH = 250
 
     # Skip detections with < 80% confidence
     DETECTION_MIN_CONFIDENCE = 0.8
@@ -137,16 +138,6 @@ class LabDataset(utils.Dataset):
                 width=width, height=height,
                 polygons=polygons, names=names)
 
-            # for name in names:
-            #     if label.get(name["name"]):
-            #         label[name["name"]] += 1
-            #     else:
-            #         label[name["name"]] = 1
-
-        # print("The number of ", subset, "image: ", len(self.image_info))
-        # print("The number of ", subset, "label: ", sum(label.values()))
-        # for k, v in sorted(label.items()):
-        #     print(" The number of '", k, "' label: ", v)
         end = time.time()
         print("Finshed Loading", subset, " Image dataset")
         print("Loading Time: ", round((end - start), 3) ,  "[s]")
@@ -195,6 +186,9 @@ def train(model):
     dataset_train = LabDataset()
     dataset_train.load_lab(args.dataset, "train")
     dataset_train.prepare()
+
+    num_train_images = dataset_train.num_images
+    model.config.STEPS_PER_EPOCH = int(num_train_images / (model.config.GPU_COUNT * model.config.IMAGES_PER_GPU)) + 1 
 
     # Validation dataset
     dataset_val = LabDataset()
