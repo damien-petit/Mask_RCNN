@@ -32,6 +32,7 @@ assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
 
 # For Error "CUDNN_STATUS_INTERNAL_ERROR"
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+config.allow_soft_placement = True
 session = tf.Session(config=config)
 K.tensorflow_backend.set_session(session)
 
@@ -2344,7 +2345,7 @@ class MaskRCNN():
             keras.callbacks.TensorBoard(log_dir=self.log_dir,
                                         histogram_freq=0, write_graph=True, write_images=False),
             keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
+                                            verbose=0, save_weights_only=True, period=5),
         ]
 
         # Add custom callbacks to the list
