@@ -17,7 +17,8 @@ import skimage.draw
 import lab_config
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../")
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(FILE_PATH, "..")
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -44,7 +45,7 @@ class LabDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes. We have only one class to add.
-        for i, name in enumerate(class_names):
+        for i, name in enumerate(lab_config.CLASS_NAMES):
             if name == "BG": continue
             self.add_class("lab", i, name)
 
@@ -114,7 +115,7 @@ class LabDataset(utils.Dataset):
         for i, (p, n) in enumerate(zip(info["polygons"], info["names"])):
             rr, cc = skimage.draw.polygon(p['all_points_y'], p['all_points_x'])
             mask[rr, cc, i] = 1
-            class_id = class_names.index(n["name"])
+            class_id = lab_config.CLASS_NAMES.index(n["name"])
             class_ids.append(class_id)
 
         # Return mask, and array of class IDs of each instance. Since we have
@@ -193,6 +194,9 @@ if __name__ == '__main__':
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description='Train Mask R-CNN to detect lab data.')
+    parser.add_argument("command",
+                        metavar="<command>",
+                        help="'train' or 'detect'")
     parser.add_argument('--dataset', required=False,
                         metavar="/path/to/lab/dataset/",
                         help='Directory of the lab dataset')
@@ -243,7 +247,7 @@ if __name__ == '__main__':
         model.load_weights(weights_path, by_name=True, exclude=[
             "mrcnn_class_logits", "mrcnn_bbox_fc",
             "mrcnn_bbox", "mrcnn_mask"])
-    elif weights_path = "none":
+    elif weights_path == "none":
         pass
     else:
         model.load_weights(weights_path, by_name=True)
